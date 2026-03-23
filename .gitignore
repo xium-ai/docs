@@ -1,0 +1,10 @@
+# Jekyll Build
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+vendor/
+
+# IDE
+.idea/
+.DS_Store
