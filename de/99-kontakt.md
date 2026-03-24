@@ -9,5 +9,4 @@ nav_order: 99
 
 Bei Fragen zu Xium OS, Demos oder Zusammenarbeit:
 
-**Frank Meier**  
 [frank@axium.ai](mailto:frank@axium.ai)
