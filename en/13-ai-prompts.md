@@ -51,7 +51,7 @@ Global prompts apply to all contexts:
 ## Prompt Hierarchy
 
 1. **Global prompts** — sent to Claude first
-2. **Context-specific prompts** — passed per context during `xos_schema` call
+2. **Context-specific prompts** — passed per context during `xos_ast` call
 
 ## Best Practices
 

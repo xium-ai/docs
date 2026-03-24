@@ -13,44 +13,51 @@ nav_order: 2
 Claude Desktop (stdio)
         │
         ▼
-mcp-bridge (:stdio → HTTP)
+mcp-bridge (stdio → MCP HTTP Streamable)
         │
         ▼
-XOS Hub (:8000/mcp)          ← MCP-Server + Wails-Desktop
+XOS (:8000/mcp)              ← MCP-Server + HTTP/HTTPS Server
         │
         ├── DSL / AST         ← XML Context-Definitionen
         ├── GraphQL Engine    ← auto-generiert aus DSL
-        ├── HTML Board        ← Wails-Fenster
+        ├── Board             ← Browser-basiert (HTTPS)
         │
-        └── HTTPS/mTLS ──────▶ xosp Plugin-Server (:9100)
+        └── MCP HTTP ────────▶ XOSP Plugin-Server (:9100)
+              (TLS Fingerprint-Pinning)
                                       │
-                                      └── eigene Datenquellen
+                                      ├── Memgraph (Graph-DB)
+                                      └── PostgreSQL / weitere Quellen
 ```
 
-## XOS Hub
+## XOS
 
-Der Hub ist der zentrale Prozess. Er startet als Wails-Desktop-App und stellt gleichzeitig einen MCP-Server auf Port `8000` bereit.
+XOS ist der zentrale Prozess. Er startet einen HTTP-Server für den Login und einen HTTPS-Server für das Dashboard (Board).
+
+**Login-Ablauf:**
+1. Browser öffnet `http://localhost:8000` → Weiterleitung zu Keycloak
+2. Keycloak-Login (OIDC)
+3. Nach erfolgreicher Anmeldung: zwei Browser-Tabs öffnen sich mit HTTPS
 
 **Aufgaben:**
-- OAuth-Login (Authentik oder lokaler Modus)
+- Keycloak OIDC-Login (JWKS-Verifikation)
+- Konfiguration aus etcd laden
 - DSL laden und AST aufbauen
 - GraphQL-Schema generieren
-- Datenbankverbindungen verwalten (DSN-Registry)
 - MCP-Tools für Claude bereitstellen
-- HTML ins Wails-Board rendern
+- HTML ins Board rendern
 
-## xosp (Plugin-Server)
+## XOSP (Plugin-Server)
 
-Der Plugin-Server ist ein separater Prozess, der ebenfalls als MCP-Server läuft — aber mit eigenem Context-Verzeichnis und eigenen Datenquellen.
+XOSP ist ein separater MCP-Server für Datenquellen und GraphQL-Ausführung. Er verbindet sich mit Memgraph, PostgreSQL oder anderen Backends.
 
-Der Hub verbindet sich via **HTTPS/mTLS** mit dem Plugin-Server. Das TLS-Zertifikat wird automatisch generiert und in Vault gespeichert.
+XOS kommuniziert mit XOSP über **MCP HTTP Streamable** mit TLS Fingerprint-Pinning — kein CA, kein Ablaufdatum. Der Fingerprint wird einmalig via `make register` in etcd geschrieben.
 
-**Wann wird xosp benötigt?**  
-Wenn Datenquellen vom Hub-Prozess getrennt laufen sollen — z.B. auf einem anderen Server oder als isolierter Microservice.
+**Wann wird XOSP benötigt?**  
+Immer — XOSP ist die Datenschicht. XOS rendert, XOSP liefert.
 
 ## mcp-bridge
 
-Claude Desktop kommuniziert per **stdio** (JSON-RPC über Stdin/Stdout). Der XOS Hub ist aber ein HTTP-Server. Die `mcp-bridge` übersetzt zwischen beiden Protokollen.
+Claude Desktop kommuniziert per **stdio** (JSON-RPC). XOS ist ein HTTP-Server. Die mcp-bridge übersetzt zwischen beiden Protokollen via MCP HTTP Streamable.
 
 ```
 Claude Desktop
@@ -58,21 +65,23 @@ Claude Desktop
          │
     mcp-bridge
          │
-    HTTP POST /mcp
+    MCP HTTP Streamable
          │
-    XOS Hub
+    XOS (:8000/mcp)
 ```
+
+Jede neue Claude-Chat-Session startet die Bridge neu — `xos_ast` muss daher einmal pro Session aufgerufen werden.
 
 ## Datenfluss: Query
 
 ```
 Claude → xos_query("person_list", "{ person_list { id firstname ... } }")
-    → GraphQL Execute
-    → SQL SELECT ... FROM person
+    → XOSP: GraphQL Execute
+    → Memgraph / PostgreSQL
     → JSON-Daten
     → HTML-Template rendern
-    → Wails Board aktualisieren
-    → "Daten im Board angezeigt"
+    → Board im Browser aktualisieren
+    → "All data was successfully displayed in the UI."
 ```
 
 ## Datenfluss: Mutation
@@ -81,24 +90,22 @@ Claude → xos_query("person_list", "{ person_list { id firstname ... } }")
 Claude → xos_ui_change_required("person_detail", {"lastname": "Müller"})
     → Stage-Daten mergen
     → HTML-Template rendern (Preview)
-    → Wails Board aktualisieren (noch nicht gespeichert)
+    → Board aktualisieren (noch nicht gespeichert)
 
 Benutzer bestätigt →
 
 Claude → xos_ui_save()
-    → FormData aus Board scrapen
+    → FormData aus Board lesen
     → GraphQL Mutation bauen
-    → SQL UPDATE ... WHERE id = ?
-    → Erfolg
+    → XOSP: Mutation ausführen
+    → Datenbank aktualisiert
 ```
 
-## Secret-Management
+## Konfiguration
 
-XOS unterstützt zwei Secret-Backends:
+Alle Infrastruktur-Parameter (IAM, Vault, XOSP, HTML-Store) kommen aus **etcd**.  
+→ Siehe [Infrastruktur-Konfiguration](14-infra-conf.md)
 
-| Provider | Verwendung |
-|---|---|
-| `env` | Umgebungsvariablen — für lokale Entwicklung |
-| `vault` | HashiCorp Vault KV v2 — für Produktion |
+## Secret Management
 
-Alle Keys werden unter einem einzigen Vault-Pfad als Felder gespeichert (z.B. `secret/xos`).
+Secrets (TLS-Keys, XOSP-Identity) werden in **OpenBao** (Vault-kompatibler Fork, MPL 2.0) gespeichert. XOS authentifiziert sich über das JWT des eingeloggten Benutzers (JWKS).

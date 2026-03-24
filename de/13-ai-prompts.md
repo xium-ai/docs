@@ -51,7 +51,7 @@ Globale Prompts gelten für alle Contexts:
 ## Prompt-Hierarchie
 
 1. **Globale Prompts** — werden zuerst an Claude übermittelt
-2. **Context-spezifische Prompts** — werden beim `xos_schema`-Aufruf je Context übergeben
+2. **Context-spezifische Prompts** — werden beim `xos_ast`-Aufruf je Context übergeben
 
 ## Best Practices
 

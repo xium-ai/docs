@@ -55,10 +55,9 @@ ctx/
   person.ctx.xml      ← person_list + person_detail
   note.ctx.xml        ← note_list + note_detail
   global.conf.xml     ← locales, global AI prompts
-  infra.conf.xml      ← DSN definitions (backbone)
 ```
 
-All `.ctx.xml` files in `ctx_dir` are automatically loaded on startup and merged into a single AST.
+All `.ctx.xml` files are automatically loaded on startup and merged into a single AST. DSN sources and infrastructure parameters come from **etcd** — not from an `infra.conf.xml`.
 
 ## global.conf.xml
 

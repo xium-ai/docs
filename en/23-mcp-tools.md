@@ -13,19 +13,19 @@ XOS provides Claude with a defined set of MCP tools. These tools are the only in
 
 | Tool | Description |
 |---|---|
-| `xos_schema` | Load AST — contexts, fields, prompts |
+| `xos_ast` | Load AST — contexts, fields, relations, prompts |
 | `xos_query` | Load data and render into Board |
 | `xos_render` | Render JSON directly into Board |
 | `xos_ui_change_required` | Write changes as preview into Board |
 | `xos_ui_save` | Save data |
+| `xos_delete` | Delete a record |
 | `xos_system_status` | Get system status |
-| `xos_contacts` | Load contacts |
-| `xos_mail_compose` | Prepare a mail |
-| `xos_mail_send` | Send a mail |
+| `xos_call` | Start a video or audio call |
+| `xos_presence` | Show online users |
 
 ---
 
-# `xos_schema`
+# `xos_ast`
 
 Loads the complete XOS AST and returns it to Claude.
 
@@ -36,7 +36,7 @@ Loads the complete XOS AST and returns it to Claude.
 - Global and context-specific AI prompts
 - Locales, relations, navigate definitions
 
-**Important:** The schema is processed internally. Claude does not output raw schema data in the chat.
+**Important:** The schema is processed internally. Claude always responds with just: `"Schema geladen."`
 
 ---
 
@@ -57,9 +57,9 @@ query:   "{ person_list { id firstname lastname email city age net_worth } }"
 **Returns:** `"All data was successfully displayed in the UI."`
 
 **Rules:**
-- Always call `xos_schema` first
+- Always call `xos_ast` first
 - Use exactly the `list_fields` of the context
-- Do not call `xos_query` without loading the schema first
+- Never write raw data into the chat — data belongs in the Board
 
 ---
 
@@ -73,11 +73,6 @@ Renders JSON data directly into the Board — without GraphQL.
 
 **Usage:** When data is already available (e.g. from an external source) and only needs to be displayed.
 
-```
-context: "person_list"
-json:    "[{\"id\":1,\"firstname\":\"John\",\"lastname\":\"Smith\"}]"
-```
-
 ---
 
 # `xos_ui_change_required`
@@ -86,13 +81,7 @@ Writes AI changes as a preview into the Board. Data is **not yet** saved.
 
 **Parameters:**
 - `context` — context of the current form
-- `changes` — changed fields as a JSON object
-
-**Example:**
-```
-context: "person_detail"
-changes: {"lastname": "Smith", "age": 35}
-```
+- `json` — changed fields as a JSON object (only changed fields — the rest is merged from the Board)
 
 **Workflow:** Always after `xos_query`, always before `xos_ui_save`.
 
@@ -104,9 +93,21 @@ Saves the current Board data to the database.
 
 **No parameters.**
 
-XOS automatically scrapes the FormData from the Board, builds the GraphQL mutation, and executes it.
+XOS automatically reads the FormData from the Board, builds the GraphQL mutation, and executes it.
 
 **Prerequisite:** The user must have explicitly confirmed they want to save.
+
+---
+
+# `xos_delete`
+
+Permanently deletes a record.
+
+**Parameters:**
+- `context` — context of the record to delete
+- `id` — record ID
+
+**Prerequisite:** The user must have explicitly confirmed they want to delete.
 
 ---
 
@@ -115,46 +116,37 @@ XOS automatically scrapes the FormData from the Board, builds the GraphQL mutati
 Returns the current system status:
 - Active context
 - Available tools
-- DSN status
+- Connection status
 
 ---
 
-# `xos_contacts`
+# `xos_call`
 
-Loads contacts from the configured provider (CardDAV, Google, Microsoft).
+Starts a video or audio call with another user via LiveKit.
 
 **Parameters:**
-- `query` — search term (name, email)
+- `callee` — username of the user to call
 
-**Returns:** List of contacts with name, email, phone.
+XOS generates a LiveKit token, writes an invitation to etcd (the callee reacts immediately via a watch) and renders the call UI into the Board.
 
----
-
-# `xos_mail_compose`
-
-Prepares an email and shows a preview in the Board.
-
-**Parameters:**
-- `to` — recipient (name or email from contacts)
-- `subject` — subject line
-- `body` — message body
+**Prerequisite:** LiveKit must be running and configured in the stack.
 
 ---
 
-# `xos_mail_send`
+# `xos_presence`
 
-Sends the prepared email from the current session.
+Shows which users are currently online.
 
 **No parameters.**
 
-**Prerequisite:** `xos_mail_compose` was called and the user has confirmed with "send".
+**Prerequisite:** Cluster/etcd must be active.
 
 ---
 
 # The Complete AI Workflow
 
 ```
-1. xos_schema              → load schema (once per session)
+1. xos_ast                 → load schema (once per session)
 2. xos_query               → load and display data
 3. [user wants to change something]
 4. xos_ui_change_required  → show changes as preview

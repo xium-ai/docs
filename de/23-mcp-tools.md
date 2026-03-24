@@ -13,19 +13,19 @@ XOS stellt Claude eine definierte Menge von MCP-Tools zur Verfügung. Diese Tool
 
 | Tool | Beschreibung |
 |---|---|
-| `xos_schema` | AST laden — Contexts, Felder, Prompts |
+| `xos_ast` | AST laden — Contexts, Felder, Relationen, Prompts |
 | `xos_query` | Daten laden und ins Board rendern |
 | `xos_render` | JSON direkt ins Board rendern |
 | `xos_ui_change_required` | Änderungen als Preview ins Board |
 | `xos_ui_save` | Daten speichern |
+| `xos_delete` | Datensatz löschen |
 | `xos_system_status` | Systemstatus abrufen |
-| `xos_contacts` | Kontakte laden |
-| `xos_mail_compose` | Mail vorbereiten |
-| `xos_mail_send` | Mail senden |
+| `xos_call` | Video- oder Audiocall starten |
+| `xos_presence` | Online-Benutzer anzeigen |
 
 ---
 
-# `xos_schema`
+# `xos_ast`
 
 Lädt den vollständigen XOS-AST und gibt ihn an Claude zurück.
 
@@ -36,7 +36,7 @@ Lädt den vollständigen XOS-AST und gibt ihn an Claude zurück.
 - Globale und context-spezifische AI-Prompts
 - Locales, Relationen, Navigate-Definitionen
 
-**Wichtig:** Das Schema wird intern verarbeitet. Claude gibt keine Schema-Rohdaten im Chat aus.
+**Wichtig:** Das Schema wird intern verarbeitet. Claude antwortet immer nur mit: `"Schema geladen."`
 
 ---
 
@@ -57,9 +57,9 @@ query:   "{ person_list { id firstname lastname email city age net_worth } }"
 **Rückgabe:** `"All data was successfully displayed in the UI."`
 
 **Regeln:**
-- Immer `xos_schema` zuerst aufrufen
+- Immer `xos_ast` zuerst aufrufen
 - Exakt die `list_fields` des Contexts verwenden
-- Kein `xos_query` ohne vorheriges Schema-Laden
+- Keine Rohdaten in den Chat schreiben — Daten gehören ins Board
 
 ---
 
@@ -71,12 +71,7 @@ Rendert JSON-Daten direkt ins Board — ohne GraphQL.
 - `context` — Context für das HTML-Template
 - `json` — Daten als JSON-String
 
-**Verwendung:** Wenn die Daten bereits vorliegen (z.B. aus einer externen Quelle) und nur angezeigt werden sollen.
-
-```
-context: "person_list"
-json:    "[{\"id\":1,\"firstname\":\"Max\",\"lastname\":\"Mustermann\"}]"
-```
+**Verwendung:** Wenn Daten bereits vorliegen (z.B. aus einer externen Quelle) und nur angezeigt werden sollen.
 
 ---
 
@@ -86,13 +81,7 @@ Schreibt KI-Änderungen als Preview ins Board. Die Daten werden noch **nicht** g
 
 **Parameter:**
 - `context` — Context des aktuellen Formulars
-- `changes` — Geänderte Felder als JSON-Objekt
-
-**Beispiel:**
-```
-context: "person_detail"
-changes: {"lastname": "Schmidt", "age": 35}
-```
+- `json` — Geänderte Felder als JSON-Objekt (nur die geänderten Felder — Rest wird aus dem Board übernommen)
 
 **Workflow:** Immer nach `xos_query`, immer vor `xos_ui_save`.
 
@@ -104,9 +93,21 @@ Speichert die aktuellen Board-Daten in die Datenbank.
 
 **Keine Parameter.**
 
-XOS scraped automatisch die FormData aus dem Board, baut die GraphQL-Mutation und führt sie aus.
+XOS liest automatisch die FormData aus dem Board, baut die GraphQL-Mutation und führt sie aus.
 
 **Voraussetzung:** Der Benutzer muss explizit bestätigt haben, dass er speichern möchte.
+
+---
+
+# `xos_delete`
+
+Löscht einen Datensatz dauerhaft.
+
+**Parameter:**
+- `context` — Context des zu löschenden Datensatzes
+- `id` — ID des Datensatzes
+
+**Voraussetzung:** Der Benutzer muss explizit bestätigt haben, dass er löschen möchte.
 
 ---
 
@@ -115,46 +116,37 @@ XOS scraped automatisch die FormData aus dem Board, baut die GraphQL-Mutation un
 Gibt den aktuellen Systemstatus zurück:
 - Aktiver Context
 - Verfügbare Tools
-- DSN-Status
+- Verbindungsstatus
 
 ---
 
-# `xos_contacts`
+# `xos_call`
 
-Lädt Kontakte aus dem konfigurierten Provider (CardDAV, Google, Microsoft).
+Startet einen Video- oder Audiocall mit einem anderen Benutzer über LiveKit.
 
 **Parameter:**
-- `query` — Suchbegriff (Name, E-Mail)
+- `callee` — Username des anzurufenden Benutzers
 
-**Rückgabe:** Liste von Kontakten mit Name, E-Mail, Telefon.
+XOS generiert einen LiveKit-Token, schreibt eine Einladung in etcd (der Callee reagiert sofort über einen Watch) und rendert die Call-UI ins Board.
 
----
-
-# `xos_mail_compose`
-
-Bereitet eine E-Mail vor und zeigt eine Preview im Board.
-
-**Parameter:**
-- `to` — Empfänger (Name oder E-Mail aus Kontakten)
-- `subject` — Betreff
-- `body` — Nachrichtentext
+**Voraussetzung:** LiveKit muss im Stack laufen und konfiguriert sein.
 
 ---
 
-# `xos_mail_send`
+# `xos_presence`
 
-Sendet die vorbereitete E-Mail aus der aktuellen Session.
+Zeigt welche Benutzer gerade online sind.
 
 **Keine Parameter.**
 
-**Voraussetzung:** `xos_mail_compose` wurde aufgerufen und der Benutzer hat mit "senden" bestätigt.
+**Voraussetzung:** Cluster/etcd muss aktiv sein.
 
 ---
 
 # Der vollständige AI-Workflow
 
 ```
-1. xos_schema              → Schema laden (einmal pro Session)
+1. xos_ast                 → Schema laden (einmal pro Session)
 2. xos_query               → Daten laden und anzeigen
 3. [Benutzer möchte etwas ändern]
 4. xos_ui_change_required  → Änderungen als Preview

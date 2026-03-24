@@ -33,16 +33,18 @@ Kein direktes Schreiben in die Datenbank ohne Benutzerbestätigung.
 
 | Komponente | Beschreibung |
 |---|---|
-| **XOS Hub** | Hauptprozess — MCP-Server, OAuth-Login, Board-Rendering |
-| **xosp (Plugin-Server)** | Externer MCP-Server für eigene Datenquellen |
+| **XOS** | Hauptprozess — MCP-Server, HTTP-Login, HTTPS-Dashboard, Board-Rendering |
+| **XOSP (Plugin-Server)** | Separater MCP-Server für Datenquellen und GraphQL |
 | **mcp-bridge** | stdio→HTTP Proxy für Claude Desktop |
 | **DSL** | XML-basierte Context-Definition |
-| **Board** | Anzeigebereich im Wails-Fenster |
+| **Board** | Browser-basierte Anzeigeoberfläche (HTTPS) |
 
 ## Technologie-Stack
 
-- **Go** + **Wails** — Desktop-Applikation (macOS, Windows, Linux)
+- **Go** — Server und MCP-Bridge
+- **Browser-basiert** — HTTP Login → Keycloak → HTTPS Dashboard
 - **GraphQL** — automatisch aus DSL generiert
 - **HTML Templates** — data-binding via `field=`, `loop=`, `bind=` Attribute
-- **HashiCorp Vault** — Secret Management
-- **OAuth 2.0 / OIDC** — Authentifizierung (z.B. Authentik)
+- **OpenBao** — Secret Management (Vault-kompatibler Fork, MPL 2.0)
+- **etcd** — zentrale Konfigurationsquelle
+- **OAuth 2.0 / OIDC** — Authentifizierung via Keycloak
