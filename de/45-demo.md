@@ -7,7 +7,7 @@ nav_order: 45
 
 # Demo Stack
 
-Der XOS Demo Stack ist eine vollständige Docker Compose Umgebung zum schnellen Einstieg und für Vorführungen.
+Der XOS Demo Stack ist eine vollständige Docker Compose Umgebung für lokale Entwicklung und Vorführungen.
 
 **Repository:** [github.com/xium-ai/demo](https://github.com/xium-ai/demo)
 
@@ -23,36 +23,34 @@ Der XOS Demo Stack ist eine vollständige Docker Compose Umgebung zum schnellen 
 git clone https://github.com/xium-ai/demo.git
 cd demo
 
-make infra      # Phase 1: Vault, Keycloak, PostgreSQL, etcd
-# ~30s warten
+make infra      # Phase 1: OpenBao, Keycloak, PostgreSQL, etcd
+# ~30s warten bis OpenBao + Keycloak bereit sind
 
-make app        # Phase 2: XOSP, MinIO, Memgraph, Setup-Job
+make app        # Phase 2: XOSP, MinIO, Memgraph, Redis, LiveKit, Setup-Job
 make register   # XOSP Fingerprint in etcd schreiben (einmalig)
 
 ./xos --etcd localhost:2379
 ```
 
-## Phasen
+## Die zwei Phasen
 
-Der Stack ist in zwei Phasen aufgeteilt — analog zu realen Enterprise-Deployments, wo Vault und Keycloak immer vor den Anwendungen laufen.
+Der Stack ist bewusst zweiphasig aufgebaut — analog zu realen Enterprise-Deployments, wo Vault und Keycloak immer vor den Anwendungen bereitstehen müssen.
 
 **Phase 1 — Infrastruktur (`make infra`)**
 
-Startet die Basisdienste: OpenBao (Vault), Keycloak, PostgreSQL, etcd. Diese Dienste müssen vollständig bereit sein bevor Phase 2 startet.
+Startet: OpenBao (Vault), Keycloak, PostgreSQL, etcd. Diese Dienste müssen vollständig bereit sein bevor Phase 2 startet.
 
 **Phase 2 — Anwendung (`make app`)**
 
-Startet XOSP, MinIO, Memgraph, Redis, LiveKit und den Setup-Job. Der Setup-Job konfiguriert Vault, MinIO, Keycloak und schreibt alle Konfigurationskeys in etcd.
+Startet: XOSP, MinIO, Memgraph, Redis, LiveKit und den Setup-Job. Der Setup-Job konfiguriert OpenBao, MinIO, Keycloak und schreibt alle Konfigurationskeys nach etcd.
 
-## XOSP Fingerprint
-
-Nach `make app` muss einmalig der XOSP Fingerprint registriert werden:
+## XOSP Fingerprint registrieren
 
 ```bash
 make register
 ```
 
-Dieser Schritt liest den Fingerprint aus Vault und schreibt ihn in etcd. XOS nutzt ihn für Fingerprint-Pinning beim TLS-Connect zu XOSP. Nach einem `make reset` muss `make register` erneut ausgeführt werden.
+Liest den XOSP Fingerprint aus Vault und schreibt ihn in etcd. XOS nutzt ihn für Fingerprint-Pinning beim TLS-Connect zu XOSP. Nach einem `make reset` muss `make register` erneut ausgeführt werden.
 
 ## Login
 
@@ -96,8 +94,8 @@ Dieser Schritt liest den Fingerprint aus Vault und schreibt ihn in etcd. XOS nut
 | `make seed-ctx` | Context-Gruppen in Memgraph laden |
 | `make install-ca` | OpenBao CA im Mac Keychain installieren (sudo) |
 | `make status` | Laufende Container |
-| `make down` | Stack stoppen |
-| `make reset` | Stack + Volumes löschen |
+| `make down` | Stack stoppen (Volumes bleiben erhalten) |
+| `make reset` | Stack + alle Volumes löschen |
 
 ## Reset
 

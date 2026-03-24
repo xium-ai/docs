@@ -9,24 +9,24 @@ nav_order: 3
 
 ## Voraussetzungen
 
-- XOS Binary (`xos` / `xos.exe`)
-- Docker mit Docker Compose
+- XOS Binary (`xos` / `xos.exe`) — [Download](https://github.com/xium-ai/releases)
+- Docker mit Docker Compose v2
 - Claude Desktop mit MCP-Unterstützung
 
 ## 1. Demo-Stack starten
+
+Der schnellste Einstieg ist der Demo-Stack. Er startet alle benötigten Komponenten und konfiguriert etcd automatisch.
 
 ```bash
 git clone https://github.com/xium-ai/demo
 cd demo
 
-make infra   # Phase 1: Vault, Keycloak, PostgreSQL, etcd
-# Warten bis Vault + Keycloak bereit sind (~30s)
-
-make app     # Phase 2: XOSP, MinIO, Memgraph und Setup-Job
-make register  # XOSP Fingerprint in etcd schreiben (einmalig)
+make infra      # Phase 1: OpenBao, Keycloak, PostgreSQL, etcd
+make app        # Phase 2: XOSP, MinIO, Memgraph und weitere
+make register   # XOSP Fingerprint einmalig registrieren
 ```
 
-XOS bezieht die gesamte Konfiguration aus **etcd** — keine `xos.toml` nötig.
+→ Details und Makefile-Referenz: [Demo Stack](45-demo.md)
 
 ## 2. XOS starten
 
@@ -34,11 +34,7 @@ XOS bezieht die gesamte Konfiguration aus **etcd** — keine `xos.toml` nötig.
 ./xos --etcd localhost:2379
 ```
 
-Der Browser öffnet sich automatisch für den Keycloak-Login.
-
-```
-Benutzer:  frank  /  xos-dev-2026
-```
+Der Browser öffnet sich für den Keycloak-Login (`frank` / `xos-dev-2026`).
 
 ## 3. Claude Desktop verbinden
 
@@ -49,13 +45,13 @@ In `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "xos": {
       "command": "/pfad/zu/xos",
-      "args": ["--bridge"]
+      "args": ["--bridge", "--etcd", "localhost:2379"]
     }
   }
 }
 ```
 
-Claude Desktop neu starten. Das Hammer-Symbol (🔨) zeigt die verfügbaren XOS-Tools an.
+Claude Desktop neu starten. Das Hammer-Symbol (🔨) zeigt die verfügbaren XOS-Tools.
 
 ## 4. Ersten Query stellen
 
@@ -64,14 +60,3 @@ In Claude Desktop:
 > „Zeige mir alle Personen"
 
 Claude lädt das Schema, fragt die Daten ab und rendert sie ins Board.
-
-## Makefile-Übersicht
-
-| Befehl | Beschreibung |
-|---|---|
-| `make infra` | Phase 1: Vault, Keycloak, PostgreSQL, etcd |
-| `make app` | Phase 2: Anwendung (setzt Phase 1 voraus) |
-| `make register` | XOSP Fingerprint in etcd schreiben (einmalig nach `make app`) |
-| `make status` | Laufende Container |
-| `make down` | Stack stoppen |
-| `make reset` | Alles löschen inkl. Volumes |

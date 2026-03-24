@@ -7,7 +7,7 @@ nav_order: 45
 
 # Demo Stack
 
-The XOS demo stack is a complete Docker Compose environment for quick onboarding and demonstrations.
+The XOS demo stack is a complete Docker Compose environment for local development and demonstrations.
 
 **Repository:** [github.com/xium-ai/demo](https://github.com/xium-ai/demo)
 
@@ -23,36 +23,34 @@ The XOS demo stack is a complete Docker Compose environment for quick onboarding
 git clone https://github.com/xium-ai/demo.git
 cd demo
 
-make infra      # Phase 1: Vault, Keycloak, PostgreSQL, etcd
-# Wait ~30s
+make infra      # Phase 1: OpenBao, Keycloak, PostgreSQL, etcd
+# Wait ~30s for OpenBao + Keycloak to be ready
 
-make app        # Phase 2: XOSP, MinIO, Memgraph, setup job
+make app        # Phase 2: XOSP, MinIO, Memgraph, Redis, LiveKit, setup job
 make register   # Write XOSP fingerprint to etcd (once)
 
 ./xos --etcd localhost:2379
 ```
 
-## Phases
+## The two phases
 
-The stack is split into two phases — mirroring real enterprise deployments where Vault and Keycloak always run before applications.
+The stack is intentionally split into two phases — mirroring real enterprise deployments where Vault and Keycloak must always be running before applications start.
 
 **Phase 1 — Infrastructure (`make infra`)**
 
-Starts the base services: OpenBao (Vault), Keycloak, PostgreSQL, etcd. These must be fully ready before Phase 2 starts.
+Starts: OpenBao (Vault), Keycloak, PostgreSQL, etcd. These services must be fully ready before Phase 2 starts.
 
 **Phase 2 — Application (`make app`)**
 
-Starts XOSP, MinIO, Memgraph, Redis, LiveKit and the setup job. The setup job configures Vault, MinIO, Keycloak and writes all configuration keys to etcd.
+Starts: XOSP, MinIO, Memgraph, Redis, LiveKit and the setup job. The setup job configures OpenBao, MinIO, Keycloak and writes all configuration keys to etcd.
 
-## XOSP Fingerprint
-
-After `make app`, register the XOSP fingerprint once:
+## Registering the XOSP fingerprint
 
 ```bash
 make register
 ```
 
-This reads the fingerprint from Vault and writes it to etcd. XOS uses it for fingerprint pinning on the TLS connection to XOSP. After a `make reset`, run `make register` again.
+Reads the XOSP fingerprint from Vault and writes it to etcd. XOS uses it for fingerprint pinning on the TLS connection to XOSP. After a `make reset`, run `make register` again.
 
 ## Login
 
@@ -96,8 +94,8 @@ This reads the fingerprint from Vault and writes it to etcd. XOS uses it for fin
 | `make seed-ctx` | Load context groups into Memgraph |
 | `make install-ca` | Install OpenBao CA in Mac keychain (sudo) |
 | `make status` | Show running containers |
-| `make down` | Stop stack |
-| `make reset` | Delete stack and volumes |
+| `make down` | Stop stack (volumes preserved) |
+| `make reset` | Delete stack and all volumes |
 
 ## Reset
 

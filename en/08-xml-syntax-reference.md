@@ -22,12 +22,14 @@ Every `.ctx.xml` file starts with `<xos>` as the root.
 
 ## `<context>` — Context Definition
 
+Contexts are written to the **graph database (Memgraph)** when loaded. Memgraph is the central store for all context definitions, relations and schema information. Use **xoso** (XOS Operator) to inspect and manage the graph — e.g. to verify contexts, visualize relations or rebuild the store.
+
 | Attribute | Required | Description |
 |---|---|---|
 | `name` | ✅ | Unique name (e.g. `person_list`) |
 | `kind` | ✅ | `collection` or `entity` |
 | `source` | ✅ | Table name in the database |
-| `dsn` | ✅ | DSN name from `infra.conf.xml` |
+| `dsn` | ✅ | DSN name (configuration in etcd / Vault) |
 | `view` | ✅ | Path to HTML template |
 | `locale` | – | Locale name from `global.conf.xml` |
 

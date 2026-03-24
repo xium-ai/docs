@@ -9,24 +9,24 @@ nav_order: 3
 
 ## Prerequisites
 
-- XOS binary (`xos` / `xos.exe`)
-- Docker with Docker Compose
+- XOS binary (`xos` / `xos.exe`) — [Download](https://github.com/xium-ai/releases)
+- Docker with Docker Compose v2
 - Claude Desktop with MCP support
 
 ## 1. Start the demo stack
+
+The fastest way to get started is the demo stack. It starts all required components and configures etcd automatically.
 
 ```bash
 git clone https://github.com/xium-ai/demo
 cd demo
 
-make infra   # Phase 1: Vault, Keycloak, PostgreSQL, etcd
-# Wait ~30s for Vault + Keycloak to be ready
-
-make app     # Phase 2: XOSP, MinIO, Memgraph and setup job
-make register  # Write XOSP fingerprint to etcd (once)
+make infra      # Phase 1: OpenBao, Keycloak, PostgreSQL, etcd
+make app        # Phase 2: XOSP, MinIO, Memgraph and more
+make register   # Register XOSP fingerprint (once)
 ```
 
-XOS reads all configuration from **etcd** — no `xos.toml` needed.
+→ Details and Makefile reference: [Demo Stack](45-demo.md)
 
 ## 2. Start XOS
 
@@ -34,11 +34,7 @@ XOS reads all configuration from **etcd** — no `xos.toml` needed.
 ./xos --etcd localhost:2379
 ```
 
-The browser opens automatically for Keycloak login.
-
-```
-User:  frank  /  xos-dev-2026
-```
+The browser opens for Keycloak login (`frank` / `xos-dev-2026`).
 
 ## 3. Connect Claude Desktop
 
@@ -49,7 +45,7 @@ In `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "xos": {
       "command": "/path/to/xos",
-      "args": ["--bridge"]
+      "args": ["--bridge", "--etcd", "localhost:2379"]
     }
   }
 }
@@ -64,14 +60,3 @@ In Claude Desktop:
 > "Show me all persons"
 
 Claude loads the schema, queries the data and renders it into the board.
-
-## Makefile overview
-
-| Command | Description |
-|---|---|
-| `make infra` | Phase 1: Vault, Keycloak, PostgreSQL, etcd |
-| `make app` | Phase 2: Application (requires Phase 1) |
-| `make register` | Write XOSP fingerprint to etcd (once after `make app`) |
-| `make status` | Running containers |
-| `make down` | Stop stack |
-| `make reset` | Delete everything including volumes |

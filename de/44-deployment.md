@@ -7,40 +7,27 @@ nav_order: 44
 
 # Deployment
 
-## Demo-Stack (Docker Compose)
+## Was XOS wirklich benötigt
 
-Der Demo-Stack enthält alle Komponenten und ist der empfohlene Einstieg.
+XOS und XOSP sind schlanke Go-Binaries. Die einzige harte Laufzeitabhängigkeit ist **etcd** — alles andere wird von dort bezogen.
 
-### Ablauf
-
-```bash
-make infra     # Phase 1: Vault, Keycloak, PostgreSQL, etcd
-# ~30s warten bis Vault + Keycloak bereit sind
-
-make app       # Phase 2: XOSP, MinIO, Memgraph, Setup-Job
-make register  # Einmalig: XOSP Fingerprint in etcd schreiben
-```
-
-### Stack-Komponenten
-
-| Komponente | Port | Beschreibung |
+| Komponente | Benötigt von | Zweck |
 |---|---|---|
-| OpenBao (Vault) | 8200 | Secrets, PKI, XOSP Identity |
-| Keycloak | 8080 | IAM / OIDC |
-| PostgreSQL | 5432 | Relationale Datenbank |
-| etcd | 2379 | Konfigurationsquelle |
-| MinIO | 9000 / 9001 | HTML-Templates (S3) |
-| Memgraph | 7687 | Graph-Datenbank für Contexts |
-| XOSP | 9100 | Plugin-Server |
+| **etcd** | XOS, XOSP | Konfigurationsquelle (einzige Pflichtabhängigkeit) |
+| **Keycloak** | XOS | IAM / OIDC-Login |
+| **OpenBao (Vault)** | XOS, XOSP | Secrets, PKI, XOSP-Identity |
+| **Memgraph** | XOSP | Graph-Datenbank für Contexts und Relationen |
+| **MinIO** | XOS | HTML-Templates (S3-kompatibler Store) |
+| **PostgreSQL** | XOSP | Relationale Daten (Demo-Daten, Anwendungsdaten) |
 
-### Login-Daten Demo
+### Optionale Komponenten (Demo-Stack)
 
-| | |
+| Komponente | Zweck |
 |---|---|
-| Benutzer | `frank` / `tristan` |
-| Passwort | `xos-dev-2026` |
-| Vault Token | `xos-dev-root-token` |
-| Keycloak Admin | `admin` / `xos-kc-bootstrap` |
+| **Redis** | Cache |
+| **LiveKit** | Voice / Video (1:1 und Gruppen-Calls) |
+
+---
 
 ## XOS starten
 
@@ -59,7 +46,7 @@ In `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "xos": {
       "command": "/pfad/zu/xos",
-      "args": ["--bridge"]
+      "args": ["--bridge", "--etcd", "localhost:2379"]
     }
   }
 }
@@ -69,22 +56,9 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 Claude Desktop neu starten. Das Hammer-Symbol (🔨) zeigt die verfügbaren XOS-Tools.
 
-## make register — wann nötig?
+---
 
-`make register` schreibt den XOSP Fingerprint aus Vault in etcd. Es muss ausgeführt werden:
+## Demo-Stack
 
-- Nach dem ersten `make app`
-- Nach `make reset` (neues Vault-Volume → neuer Fingerprint)
-
-Solange das Vault-Volume erhalten bleibt (`make down` / `make up`), bleibt der Fingerprint konstant.
-
-## Linux
-
-Der Demo-Stack läuft auf Linux identisch:
-
-```bash
-make infra && make app && make register
-./xos --etcd localhost:2379
-```
-
-Voraussetzung: Docker Compose v2, `python3` für `make register`.
+Für lokales Testen und Vorführungen steht ein vollständiger Docker Compose Stack bereit.  
+→ Siehe [Demo Stack](45-demo.md)
